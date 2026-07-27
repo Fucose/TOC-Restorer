@@ -30,7 +30,7 @@ Supported Browsers & Extensions:
 1. Install the **Tampermonkey** extension for your browser if you haven't already.
 2. Click the Tampermonkey icon in your browser toolbar and select **Create a new script...**.
 3. Clear any template code inside the editor.
-4. Copy the entire contents of `acs_rsc_toc_restorer.user.js` (Script v3.0) and paste it into the editor.
+4. Copy the entire contents of `toc-restorer.js` and paste it into the editor.
 5. Save the script (`Ctrl + S` or `Cmd + S`).
 
 ---
