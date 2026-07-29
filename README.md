@@ -20,7 +20,7 @@ To run this script, you need a **Userscript Manager** browser extension. We stro
 
 Supported Browsers & Extensions:
 
-* **Tampermonkey** ([Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) / [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikflimdfimaldneahmdaibhglagifml) / [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089))
+* **Tampermonkey** ([Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) / [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) / [Edge](https://microsoftedge.microsoft.com/addons/detail/Tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) / [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089))
 * **Violentmonkey** or **Greasemonkey**
 
 ---
@@ -39,8 +39,8 @@ Supported Browsers & Extensions:
 
 The script automatically activates when browsing any ACS or RSC journal domain on the Silverchair architecture, including but not limited to:
 
-* **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/) (*Org. Lett.*, *JACS*, *J. Org. Chem.*, etc.)
-* **RSC Publishing:** [RSC Advance Articles](https://pubs.rsc.org/) (*Chem. Sci.*, *Org. Chem. Front.*, *Chem. Commun.*, etc.)
+* **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/jacsat/latest-articles) (*JACS*, *Org. Lett.*, *J. Org. Chem.*, etc.)
+* **RSC Publishing:** [RSC Advance Articles](https://pubs.rsc.org/sc/latest-articles) (*Chem. Sci.*, *Org. Chem. Front.*, *Chem. Commun.*, etc.)
 
 ---
 
