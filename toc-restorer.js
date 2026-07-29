@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         ACS & RSC ASAP TOC Restorer (Unified 2-Column API Driven)
+// @name         ACS & RSC Universal TOC Restorer (ASAP & Issue Supported)
 // @namespace    http://tampermonkey.net/
-// @version      3.4
-// @description  Restores TOC / Visual Abstract graphics on ACS and RSC ASAP pages (40% right column, transparent background with border).
+// @version      3.5
+// @description  Restores and aligns TOC / Visual Abstract graphics on ACS and RSC (both ASAP and Issue pages) into a clean 2-column layout.
 // @author       Yingjie Wang @ SIOC
 // @match        https://pubs.acs.org/*
 // @match        https://pubs.rsc.org/*
@@ -12,11 +12,13 @@
 (function() {
     'use strict';
 
-    // 1. Inject CSS styles for 40% right-aligned layout with transparent background
+    // 1. Inject CSS styles supporting both Native TOC (ACS Issues) and Fetched TOC (ASAP/RSC Issues)
     const style = document.createElement('style');
     style.textContent = `
-        /* Transform article card to Flexbox 2-Column layout */
-        .al-article-items {
+        /* ========================================================
+           MODE A: Fetched TOC Layout (ASAP Pages & RSC Issue Pages)
+           ======================================================== */
+        .al-article-items.has-custom-toc {
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
@@ -26,13 +28,11 @@
             box-sizing: border-box !important;
         }
 
-        /* Left Column: Text & Links (Takes remaining ~56% width) */
         .custom-toc-left {
             flex: 1 1 56% !important;
             min-width: 0 !important;
         }
 
-        /* Right Column: TOC Container (Strict 40% width, transparent background, retained border) */
         .custom-toc-right {
             flex: 0 0 40% !important;
             width: 40% !important;
@@ -40,16 +40,15 @@
             position: relative !important;
             min-height: 120px !important;
             box-sizing: border-box !important;
-            background-color: transparent !important; /* Transparent background */
-            border: 1px solid #e2e8f0 !important;     /* Retained border */
-            border-radius: 6px !important;             /* Retained rounded corners */
+            background-color: transparent !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 6px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             overflow: hidden !important;
         }
 
-        /* Clickable Link Container */
         .custom-toc-link {
             position: absolute !important;
             top: 6px !important;
@@ -64,7 +63,6 @@
             cursor: pointer !important;
         }
 
-        /* Image Sizing & Hover effect */
         .custom-toc-img {
             width: 100% !important;
             height: 100% !important;
@@ -80,7 +78,73 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
         }
 
-        /* Flat Spinner & Loading State */
+        /* ========================================================
+           MODE B: Native TOC Restructuring (ACS Issue Pages)
+           ======================================================== */
+        .al-article-item-wrap.has-native-toc {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: stretch !important;
+            gap: 16px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .al-article-item-wrap.has-native-toc .al-article-items {
+            flex: 1 1 56% !important;
+            min-width: 0 !important;
+            width: auto !important;
+        }
+
+        .al-article-item-wrap.has-native-toc .issue-graphical-abstract {
+            flex: 0 0 40% !important;
+            width: 40% !important;
+            margin-left: auto !important;
+            order: 2 !important;
+            position: relative !important;
+            min-height: 120px !important;
+            box-sizing: border-box !important;
+            background-color: transparent !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 6px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+            padding: 6px !important;
+        }
+
+        .al-article-item-wrap.has-native-toc .issue-graphical-abstract a {
+            position: absolute !important;
+            top: 6px !important;
+            bottom: 6px !important;
+            left: 6px !important;
+            right: 6px !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: auto !important;
+            height: auto !important;
+            text-decoration: none !important;
+        }
+
+        .al-article-item-wrap.has-native-toc .issue-graphical-abstract img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            display: block !important;
+            border-radius: 4px !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
+        }
+
+        .al-article-item-wrap.has-native-toc .issue-graphical-abstract a:hover img {
+            transform: scale(1.02) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+        }
+
+        /* Loading UI & Spinner */
         .custom-toc-loading {
             font-size: 12px !important;
             color: #64748b !important;
@@ -105,12 +169,14 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Responsive design for narrow mobile viewports */
+        /* Mobile Viewport Responsiveness */
         @media (max-width: 768px) {
-            .al-article-items {
+            .al-article-items.has-custom-toc,
+            .al-article-item-wrap.has-native-toc {
                 flex-direction: column !important;
             }
-            .custom-toc-right {
+            .custom-toc-right,
+            .al-article-item-wrap.has-native-toc .issue-graphical-abstract {
                 width: 100% !important;
                 flex: 1 1 100% !important;
                 min-height: 180px !important;
@@ -136,6 +202,24 @@
 
     // 3. Scan and observe article cards
     function scanAndObserve() {
+        // Step A: Handle ACS Issue pages with pre-existing .issue-graphical-abstract
+        const nativeWraps = document.querySelectorAll('.al-article-item-wrap');
+        nativeWraps.forEach(wrap => {
+            const nativeToc = wrap.querySelector('.issue-graphical-abstract');
+            const card = wrap.querySelector('.al-article-items');
+            if (nativeToc && card) {
+                if (!wrap.classList.contains('has-native-toc')) {
+                    wrap.classList.add('has-native-toc');
+                    // Move native TOC element to the end so it renders on the right side
+                    if (wrap.firstElementChild === nativeToc) {
+                        wrap.appendChild(nativeToc);
+                    }
+                }
+                card.dataset.tocProcessed = 'true'; // Skip API fetching for native TOC items
+            }
+        });
+
+        // Step B: Handle cards requiring fetched TOC (ASAP pages & RSC Issue pages)
         const cards = document.querySelectorAll('.al-article-items');
         cards.forEach(card => {
             if (!card.dataset.tocProcessed) {
@@ -159,8 +243,12 @@
 
     // 4. Main layout restorer & image fetcher
     async function fetchAndRenderTOC(card) {
-        const titleLink = card.querySelector('.al-title a');
+        // Expanded title selectors to support both ASAP (.al-title) and Issue (.item-title) pages
+        const titleLink = card.querySelector('.al-title a, .item-title a, h3.customLink a, .article-title a, h5 a, h3 a');
         if (!titleLink) return;
+
+        // Apply flex layout to card
+        card.classList.add('has-custom-toc');
 
         // Wrap existing content into Left Column container
         let leftCol = card.querySelector('.custom-toc-left');
@@ -239,11 +327,13 @@
                 return;
             }
 
-            // If no image exists, remove Right Column (Left Column automatically expands to 100%)
+            // If no image exists, clean up containers
             rightCol.remove();
+            card.classList.remove('has-custom-toc');
         } catch (err) {
             console.error('Failed to retrieve TOC graphic:', titleLink.href, err);
             rightCol.remove();
+            card.classList.remove('has-custom-toc');
         }
     }
 
@@ -251,7 +341,7 @@
     scanAndObserve();
 
     const pageObserver = new MutationObserver(() => scanAndObserve());
-    const targetNode = document.querySelector('.widget-ArticleListGroups') || document.body;
+    const targetNode = document.querySelector('.widget-ArticleListGroups, .article-list-resources, #ContentColumn') || document.body;
     pageObserver.observe(targetNode, { childList: true, subtree: true });
 
 })();
