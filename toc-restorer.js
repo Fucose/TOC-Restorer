@@ -6,6 +6,8 @@
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
 // @supportURL   https://github.com/Fucose/TOC-Restorer/issues
+// @updateURL    https://raw.githubusercontent.com/Fucose/TOC-Restorer/main/toc-restorer.js
+// @downloadURL  https://raw.githubusercontent.com/Fucose/TOC-Restorer/main/toc-restorer.js
 // @match        https://pubs.acs.org/*
 // @match        https://pubs.rsc.org/*
 // @run-at       document-idle
