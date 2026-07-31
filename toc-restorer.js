@@ -1,12 +1,16 @@
 // ==UserScript==
-// @name         ACS & RSC Universal TOC Restorer (ASAP, Issue & Search)
-// @namespace    http://tampermonkey.net/
-// @version      4.0
-// @description  Restores and aligns TOC / Visual Abstract graphics on ACS and RSC (ASAP, Issue, and Search pages) into a clean 2-column layout.
+// @name         ACS & RSC TOC Restorer
+// @namespace    https://github.com/Fucose/TOC-Restorer
+// @version      4.1
+// @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
+// @homepageURL  https://github.com/Fucose/TOC-Restorer
+// @supportURL   https://github.com/Fucose/TOC-Restorer/issues
 // @match        https://pubs.acs.org/*
 // @match        https://pubs.rsc.org/*
+// @run-at       document-idle
 // @grant        none
+// @license      MIT
 // ==/UserScript==
 
 (function() {
@@ -184,6 +188,112 @@
                 margin-left: 0 !important;
             }
         }
+
+        /* ========================================================
+           MODULE C: Collapsible Right Sidebar (off-canvas)
+           #Sidebar is pulled off-screen; the center column reclaims its
+           width. A floating toggle slides it back in on demand. No DOM is
+           moved, which keeps Silverchair's own ad/widget JS intact.
+           ======================================================== */
+        body.toc-sidebar-active #Sidebar,
+        body.toc-sidebar-active .issue-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            height: 100vh !important;
+            width: 340px !important;
+            max-width: 90vw !important;
+            z-index: 100000 !important;
+            overflow-y: auto !important;
+            background: #fff !important;
+            box-shadow: -3px 0 12px rgba(0,0,0,0.12) !important;
+            transform: translateX(100%) !important;
+            transition: transform 0.25s ease !important;
+            box-sizing: border-box !important;
+            padding: 16px 20px !important;
+        }
+        body.toc-sidebar-active.toc-sidebar-open #Sidebar,
+        body.toc-sidebar-active.toc-sidebar-open .issue-sidebar {
+            transform: translateX(0) !important;
+        }
+
+        /* Convert the layout wrapper to flex so #ContentColumn absorbs the
+           freed width. :has() targets whatever directly contains the center
+           column; the known wrapper classes act as a fallback for older
+           browsers that don't support :has(). */
+        body.toc-sidebar-active :has(> .page-column--center),
+        body.toc-sidebar-active .issue-browse_content,
+        body.toc-sidebar-active #divSearch {
+            display: flex !important;
+            align-items: flex-start !important;
+        }
+        body.toc-sidebar-active .page-column--center {
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+            width: auto !important;
+            max-width: none !important;
+        }
+        body.toc-sidebar-active .page-column--left {
+            flex: 0 0 auto !important;
+        }
+
+        /* Floating toggle (vertical tab on the right edge) */
+        #toc-sidebar-toggle {
+            position: fixed !important;
+            right: 0 !important;
+            top: 20vh !important;
+            z-index: 100001 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 10px !important;
+            background: #001d2f !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 6px 0 0 6px !important;
+            padding: 14px 10px !important;
+            cursor: pointer !important;
+            font-family: Roboto, Helvetica, Arial, sans-serif !important;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            box-shadow: -2px 0 6px rgba(0,0,0,0.15) !important;
+            transition: background 0.15s ease, opacity 0.2s ease !important;
+        }
+        #toc-sidebar-toggle:hover { background: #004976 !important; }
+        #toc-sidebar-toggle .toc-toggle-label {
+            display: inline-block !important;
+            writing-mode: vertical-rl !important;
+            transform: rotate(180deg) !important; /* read bottom-to-top (CCW 90°) */
+            line-height: 1.1 !important;
+        }
+        #toc-sidebar-toggle .toc-toggle-arrow { flex: 0 0 auto !important; }
+        body.toc-sidebar-open #toc-sidebar-toggle {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* Backdrop dims the page while the sidebar is slid out */
+        #toc-sidebar-backdrop {
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(0,0,0,0.3) !important;
+            z-index: 99999 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.25s ease !important;
+        }
+        body.toc-sidebar-open #toc-sidebar-backdrop {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        @media (max-width: 768px) {
+            body.toc-sidebar-active #Sidebar,
+            body.toc-sidebar-active .issue-sidebar {
+                width: 100vw !important;
+                max-width: 100vw !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 
@@ -350,8 +460,76 @@
         }
     }
 
-    // 5. Initial execution and MutationObserver setup
+    // 5. Collapsible right sidebar (off-canvas, default collapsed).
+    //    Called once at startup; if #Sidebar isn't injected yet, it watches the
+    //    document until it appears. Idempotent (guarded by tocSidebarInit).
+    function setupSidebar() {
+        if (document.body.dataset.tocSidebarInit) return;
+        const sidebar = document.querySelector('#Sidebar, .issue-sidebar');
+        if (!sidebar) {
+            // #Sidebar is injected asynchronously by Silverchair, and as a sibling
+            // of #ContentColumn it may land outside the TOC observer's subtree — so
+            // watch the whole document until it appears, then stop. Self-disconnects
+            // after 30s so pages with no sidebar (ACS Issue/Search) don't loop forever.
+            if (!setupSidebar._watcher) {
+                setupSidebar._watcher = new MutationObserver(() => setupSidebar());
+                setupSidebar._watcher.observe(document.body, { childList: true, subtree: true });
+                setTimeout(() => {
+                    if (setupSidebar._watcher) {
+                        setupSidebar._watcher.disconnect();
+                        setupSidebar._watcher = null;
+                    }
+                }, 30000);
+            }
+            return;
+        }
+        if (setupSidebar._watcher) { setupSidebar._watcher.disconnect(); setupSidebar._watcher = null; }
+        document.body.dataset.tocSidebarInit = 'true';
+        document.body.classList.add('toc-sidebar-active'); // hide off-canvas + reclaim width
+
+        const mountToggle = () => {
+            if (document.getElementById('toc-sidebar-toggle')) return;
+            // Only render a toggle when the sidebar actually has something to show
+            // (an empty sidebar, e.g. ACS ASAP, just gets hidden silently).
+            const hasContent = sidebar.innerText.trim().length > 0 ||
+                               sidebar.querySelector('img, iframe');
+            if (!hasContent) return;
+
+            const btn = document.createElement('button');
+            btn.id = 'toc-sidebar-toggle';
+            btn.type = 'button';
+            btn.title = 'Show sidebar';
+            btn.innerHTML = `<span class="toc-toggle-label">Related</span>
+                <svg class="toc-toggle-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>`;
+            btn.addEventListener('click', () => {
+                document.body.classList.toggle('toc-sidebar-open');
+            });
+            document.body.appendChild(btn);
+
+            const backdrop = document.createElement('div');
+            backdrop.id = 'toc-sidebar-backdrop';
+            backdrop.addEventListener('click', () => {
+                document.body.classList.remove('toc-sidebar-open');
+            });
+            document.body.appendChild(backdrop);
+        };
+
+        // Sidebar content (ads/widgets) populates after the node appears; retry briefly.
+        mountToggle();
+        let tries = 0;
+        const timer = setInterval(() => {
+            mountToggle();
+            if (++tries >= 8 || document.getElementById('toc-sidebar-toggle')) clearInterval(timer);
+        }, 500);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.body.classList.remove('toc-sidebar-open');
+        });
+    }
+
+    // 6. Initial execution and MutationObserver setup
     scanAndObserve();
+    setupSidebar();   // #Sidebar arrives async; this starts watching for it
 
     let scanTimer;
     const pageObserver = new MutationObserver(() => {
