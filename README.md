@@ -17,7 +17,7 @@
 
 ### Collapsible Right Sidebar
 * **🗂️ Off-Canvas Sidebar:** The right `#Sidebar` (ads, "New & popular" articles, journal socials) is collapsed by default, giving the article list the full viewport width.
-* **📌 Slide-Out Panel:** A **Related** tab on the right edge (upper area) slides the sidebar back in on demand; click the backdrop or press `Esc` to close.
+* **📌 Slide-Out Panel:** A **More** tab on the right edge (upper area) slides the sidebar back in on demand; click the backdrop or press `Esc` to close.
 * **🛡️ Ad-Friendly:** Ads load normally inside the panel and remain blockable by your ad blocker — the script never hides or interferes with ad content.
 * **🤫 Silent When Empty:** On pages with an empty sidebar (e.g. ACS ASAP), the whitespace is reclaimed with no stray toggle button.
 
@@ -86,7 +86,7 @@ The script automatically activates when browsing any ACS or RSC journal domain o
         ▼
 [MutationObserver detects it] -> position:fixed off-canvas (CSS-only, no DOM moves)
         │
-        └─► "Related" tab slides it out on demand (backdrop / Esc closes)
+        └─► "More" tab slides it out on demand (backdrop / Esc closes)
 
 [Left Nav]  #InfoColumn is stretched to full height (align-self: stretch) so the
         │   platform's own .info-inner-wrap.can-stick sticky engages — flex-start

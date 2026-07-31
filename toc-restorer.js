@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.3
+// @version      4.5
 // @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
@@ -571,6 +571,17 @@
     //    document until it appears. Idempotent (guarded by tocSidebarInit).
     function setupSidebar() {
         if (document.body.dataset.tocSidebarInit) return;
+
+        // Only collapse the right sidebar on article-LIST pages (ASAP / Issue /
+        // Search). Article-reading pages keep their sidebar — hiding it widens
+        // the text column and hurts readability. The pg_* body class is the same
+        // signal the TOC scan keys on (list pages carry these; pg_article doesn't).
+        const b = document.body;
+        const isListPage = b.classList.contains('pg_articlesbygroup') ||
+                           b.classList.contains('pg_issue') ||
+                           b.classList.contains('pg_searchresults');
+        if (!isListPage) return;
+
         const sidebar = document.querySelector('#Sidebar, .issue-sidebar');
         if (!sidebar) {
             // #Sidebar is injected asynchronously by Silverchair, and as a sibling
@@ -605,7 +616,7 @@
             btn.id = 'toc-sidebar-toggle';
             btn.type = 'button';
             btn.title = 'Show sidebar';
-            btn.innerHTML = `<span class="toc-toggle-label">Related</span>
+            btn.innerHTML = `<span class="toc-toggle-label">More</span>
                 <svg class="toc-toggle-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>`;
             btn.addEventListener('click', () => {
                 document.body.classList.toggle('toc-sidebar-open');
