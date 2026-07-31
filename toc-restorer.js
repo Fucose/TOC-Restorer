@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.1
+// @version      4.2
 // @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
@@ -44,7 +44,7 @@
             width: 40% !important;
             margin-left: auto !important;
             position: relative !important;
-            min-height: 120px !important;
+            min-height: 180px !important;
             box-sizing: border-box !important;
             background-color: transparent !important;
             border: 1px solid #e2e8f0 !important;
@@ -109,7 +109,7 @@
             margin-left: auto !important;
             order: 2 !important;
             position: relative !important;
-            min-height: 120px !important;
+            min-height: 180px !important;
             box-sizing: border-box !important;
             background-color: transparent !important;
             border: 1px solid #e2e8f0 !important;
@@ -236,7 +236,29 @@
             max-width: none !important;
         }
         body.toc-sidebar-active .page-column--left {
-            flex: 0 0 auto !important;
+            flex: 0 0 220px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* #InfoColumn is the page's section-outline nav (jump links to article
+           groups). Two of the site's own bugs are corrected here at once:
+           (1) On ASAP (pg_articlesbygroup) the native grid reserves areas only
+               for ContentColumn + Sidebar, so #InfoColumn is auto-flowed to the
+               page footer instead of acting as the left nav it's meant to be.
+           (2) The platform styles its inner .info-inner-wrap.can-stick as
+               position:sticky, but that only engages when #InfoColumn is tall
+               enough to have room to stick. The native Issue grid stretches it
+               to the article-list height; our flex conversion uses
+               align-items:flex-start, which would collapse it and kill the
+               sticky — so the nav scrolls away instead of pinning.
+           Stretching #InfoColumn back to full height lets the platform's own
+           sticky take over: the nav pins near the top while you scroll the
+           article list, just like the Search page / ACS Issue. It's also robust
+           to a future site fix — stretched or not, #InfoColumn lands as a left
+           column either way. (ACS ASAP has no #InfoColumn, so this is a no-op
+           there; pages with no #Sidebar never get toc-sidebar-active.) */
+        body.toc-sidebar-active #InfoColumn {
+            align-self: stretch !important;
         }
 
         /* Floating toggle (vertical tab on the right edge) */
@@ -346,6 +368,65 @@
             if (hasNative || card.querySelector('.custom-toc-right')) return;
             observer.observe(card);
         });
+
+        // Step C: Give the ASAP InfoColumn nav a heading (every other list page
+        // ships with one, e.g. "In this Issue"; ASAP has none).
+        ensureAsapInfoTitle();
+
+        // Step D: Scroll-spy — highlight the nav link of the section in view.
+        setupAsapScrollSpy();
+    }
+
+    // On ArticlesByGroup (ASAP) pages the left nav is just two bare jump links
+    // (Advance Articles / Accepted manuscripts) with no heading, which looks
+    // orphaned next to the titled navs on Issue/Search pages. Inject a matching
+    // title that reuses the platform's own .in-this-issue-title styling.
+    // Idempotent. (ACS ASAP has no #InfoColumn, so this is a no-op there.)
+    function ensureAsapInfoTitle() {
+        if (!document.body.classList.contains('pg_articlesbygroup')) return;
+        const infoCol = document.getElementById('InfoColumn');
+        if (!infoCol || infoCol.dataset.tocTitled) return;
+        const wrap = infoCol.querySelector('.info-widget-wrap');
+        if (!wrap || wrap.querySelector('.in-this-issue-title')) return;
+        const title = document.createElement('div');
+        title.className = 'in-this-issue-title';
+        title.textContent = 'Contents';
+        wrap.insertBefore(title, wrap.firstChild);
+        infoCol.dataset.tocTitled = 'true';
+    }
+
+    // Scroll-spy for the ASAP nav: as the page scrolls, highlight the link whose
+    // target section is in view — mirroring the Issue page. The platform already
+    // styles .section-jump-link.active (bold + black); we only toggle the class.
+    // Idempotent; scoped to ASAP (Issue already has its own native scroll-spy).
+    function setupAsapScrollSpy() {
+        if (!document.body.classList.contains('pg_articlesbygroup')) return;
+        const infoCol = document.getElementById('InfoColumn');
+        if (!infoCol || infoCol.dataset.tocSpy) return;
+        const targets = [...infoCol.querySelectorAll('.section-jump-link')].map(item => {
+            const a = item.querySelector('a[href^="#"]');
+            const id = a && a.getAttribute('href').slice(1);
+            return { item, el: id ? document.getElementById(id) : null };
+        });
+        if (!targets.some(t => t.el)) return; // target sections not present yet
+        infoCol.dataset.tocSpy = 'true';
+
+        const THRESHOLD = 120; // px from viewport top, clearing the sticky toolbar
+        let ticking = false;
+        const update = () => {
+            ticking = false;
+            let active = 0; // default: first section (top of page)
+            for (let i = 0; i < targets.length; i++) {
+                if (targets[i].el && targets[i].el.getBoundingClientRect().top <= THRESHOLD) {
+                    active = i;
+                }
+            }
+            targets.forEach((t, i) => t.item.classList.toggle('active', i === active));
+        };
+        window.addEventListener('scroll', () => {
+            if (!ticking) { ticking = true; requestAnimationFrame(update); }
+        }, { passive: true });
+        update();
     }
 
     // Helper: Extract TOC image URL from DOM
