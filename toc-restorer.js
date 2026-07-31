@@ -531,7 +531,7 @@
 
     // 6. Initial execution and MutationObserver setup
     scanAndObserve();
-    setupSidebar();   // #Sidebar arrives async; this starts watching for it
+    setupSidebar(); // #Sidebar arrives async; this starts watching for it
 
     let scanTimer;
     const pageObserver = new MutationObserver(() => {
