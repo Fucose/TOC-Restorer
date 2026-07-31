@@ -1,6 +1,6 @@
-# ACS & RSC ASAP TOC Restorer
+# ACS & RSC TOC Restorer
 
-> A lightweight browser userscript that restores missing Table of Contents (TOC) / Visual Abstract graphics on ACS and RSC ASAP/Advance Article pages following their Silverchair platform migration.
+> A lightweight browser userscript that restores missing Table of Contents (TOC) / Visual Abstract graphics on ACS and RSC ASAP/Advance Article, Issue, and Search pages following their Silverchair platform migration.
 
 ---
 
@@ -39,8 +39,10 @@ Supported Browsers & Extensions:
 
 The script automatically activates when browsing any ACS or RSC journal domain on the Silverchair architecture, including but not limited to:
 
-* **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/jacsat/latest-articles) (*JACS*, *Org. Lett.*, *J. Org. Chem.*, etc.)
-* **RSC Publishing:** [RSC Advance Articles](https://pubs.rsc.org/sc/latest-articles) (*Chem. Sci.*, *Org. Chem. Front.*, *Chem. Commun.*, etc.)
+* **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/jacsat/latest-articles), Issue pages, and [Search results](https://pubs.acs.org/jacsat/search-results) (*JACS*, *Org. Lett.*, *J. Org. Chem.*, etc.)
+* **RSC Publishing:** [RSC Advance Articles](https://pubs.rsc.org/sc/latest-articles), Issue pages, and [Search results](https://pubs.rsc.org/search-results) (*Chem. Sci.*, *Org. Chem. Front.*, *Chem. Commun.*, etc.)
+
+On ACS Issue pages the platform already renders the TOC natively; the script only realigns it into the 2-column layout. On ASAP, RSC Issue, and Search pages the graphic is folded into the "Abstract" button — the script fetches it via Silverchair's AJAX abstract endpoint and re-attaches it. Search cards are detected by anchoring on the Abstract button, so cross-journal results (e.g. an RSC global search returning a *Chem. Commun.* article) resolve the correct journal automatically.
 
 ---
 

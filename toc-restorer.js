@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         ACS & RSC Universal TOC Restorer (ASAP & Issue Supported)
+// @name         ACS & RSC Universal TOC Restorer (ASAP, Issue & Search)
 // @namespace    http://tampermonkey.net/
-// @version      3.5
-// @description  Restores and aligns TOC / Visual Abstract graphics on ACS and RSC (both ASAP and Issue pages) into a clean 2-column layout.
+// @version      4.0
+// @description  Restores and aligns TOC / Visual Abstract graphics on ACS and RSC (ASAP, Issue, and Search pages) into a clean 2-column layout.
 // @author       Yingjie Wang @ SIOC
 // @match        https://pubs.acs.org/*
 // @match        https://pubs.rsc.org/*
@@ -16,9 +16,9 @@
     const style = document.createElement('style');
     style.textContent = `
         /* ========================================================
-           MODE A: Fetched TOC Layout (ASAP Pages & RSC Issue Pages)
+           MODE A: Fetched TOC Layout (ASAP, RSC Issue & Search Pages)
            ======================================================== */
-        .al-article-items.has-custom-toc {
+        .has-custom-toc {
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
@@ -171,7 +171,7 @@
 
         /* Mobile Viewport Responsiveness */
         @media (max-width: 768px) {
-            .al-article-items.has-custom-toc,
+            .has-custom-toc,
             .al-article-item-wrap.has-native-toc {
                 flex-direction: column !important;
             }
@@ -219,13 +219,20 @@
             }
         });
 
-        // Step B: Handle cards requiring fetched TOC (ASAP pages & RSC Issue pages)
-        const cards = document.querySelectorAll('.al-article-items');
-        cards.forEach(card => {
-            if (!card.dataset.tocProcessed) {
-                card.dataset.tocProcessed = 'true';
-                observer.observe(card);
-            }
+        // Step B: Handle cards requiring fetched TOC (ASAP, RSC Issue, and Search pages)
+        // Anchor on the Abstract button — the one stable element present on every
+        // list page (ASAP / Issue / Search) — then locate its card container.
+        const absBtns = document.querySelectorAll('.showAbstractLink[data-articleid], .js-show-abstract[data-articleid]');
+        absBtns.forEach(btn => {
+            const card = btn.closest('.al-article-items, .item-info');
+            if (!card || card.dataset.tocProcessed) return;
+            card.dataset.tocProcessed = 'true';
+            // Skip cards that already show a TOC: native (ACS Issue) or already rendered
+            const wrap = card.closest('.al-article-item-wrap');
+            const hasNative = card.querySelector('.issue-graphical-abstract') ||
+                              (wrap && wrap.querySelector('.issue-graphical-abstract'));
+            if (hasNative || card.querySelector('.custom-toc-right')) return;
+            observer.observe(card);
         });
     }
 
@@ -271,6 +278,14 @@
         rightCol.appendChild(loadingDiv);
 
         card.appendChild(rightCol);
+
+        // Revert the 2-column layout when no TOC image can be obtained
+        const cleanup = () => {
+            rightCol.remove();
+            while (leftCol.firstChild) card.insertBefore(leftCol.firstChild, leftCol);
+            leftCol.remove();
+            card.classList.remove('has-custom-toc');
+        };
 
         // Extract metadata
         const articleId = card.dataset.articleId || card.querySelector('[data-articleid]')?.dataset.articleid;
@@ -327,21 +342,23 @@
                 return;
             }
 
-            // If no image exists, clean up containers
-            rightCol.remove();
-            card.classList.remove('has-custom-toc');
+            // If no image exists, revert the layout
+            cleanup();
         } catch (err) {
             console.error('Failed to retrieve TOC graphic:', titleLink.href, err);
-            rightCol.remove();
-            card.classList.remove('has-custom-toc');
+            cleanup();
         }
     }
 
     // 5. Initial execution and MutationObserver setup
     scanAndObserve();
 
-    const pageObserver = new MutationObserver(() => scanAndObserve());
-    const targetNode = document.querySelector('.widget-ArticleListGroups, .article-list-resources, #ContentColumn') || document.body;
+    let scanTimer;
+    const pageObserver = new MutationObserver(() => {
+        clearTimeout(scanTimer);
+        scanTimer = setTimeout(scanAndObserve, 150);
+    });
+    const targetNode = document.querySelector('.widget-ArticleListGroups, .article-list-resources, #ContentColumn, #searchContent') || document.body;
     pageObserver.observe(targetNode, { childList: true, subtree: true });
 
 })();
