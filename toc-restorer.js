@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.2
+// @version      4.3
 // @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
@@ -350,6 +350,29 @@
                     }
                 }
                 card.dataset.tocProcessed = 'true'; // Skip API fetching for native TOC items
+
+                // Step A2: The platform's native TOC anchor points at the signed
+                // CDN image (…?Expires=…&Signature=…) and its click is hijacked by
+                // Silverchair's modal handler (preventDefault → #revealModal zoom).
+                // The image is already loaded, so keep it — just drop the modal
+                // handler and repoint the link at the article, making the whole
+                // graphic click through to the paper. Idempotent.
+                const nativeLink = nativeToc.querySelector('a[href]');
+                const titleLink = card.querySelector('.al-title a, .item-title a, h3.customLink a, .article-title a, h5 a, h3 a');
+                if (nativeLink && titleLink && !nativeLink.dataset.tocRepointed) {
+                    nativeLink.dataset.tocRepointed = 'true';
+                    const jq = window.jQuery || window.$;
+                    // Unbind the modal handler only when one is actually present,
+                    // so a future site fix (link repaired / modal removed) is a no-op.
+                    if (jq && jq._data && jq._data(nativeLink, 'events') && jq._data(nativeLink, 'events').click) {
+                        jq(nativeLink).off('click');
+                    }
+                    if (nativeLink.href !== titleLink.href) {
+                        nativeLink.href = titleLink.href;
+                        if (titleLink.target) nativeLink.target = titleLink.target;
+                        else nativeLink.removeAttribute('target'); // drop stale _blank from setAllLinksTarget
+                    }
+                }
             }
         });
 

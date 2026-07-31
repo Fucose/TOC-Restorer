@@ -13,6 +13,7 @@
 * **🖼️ Interactive & Clickable:** Restored TOC images mirror the article title's link and target, so clicking jumps straight to the full article.
 * **🎨 Modern Flat UI:** Restored cards blend into the journal interface with a flat CSS ring spinner and subtle hover effects.
 * **🔄 Built-in Fallback:** If an article lacks an AJAX endpoint (or it fails), the script falls back to parsing the full article page, ensuring reliable rendering.
+* **🔗 Native Graphic Click-Through (ACS Issue):** On ACS Issue pages the platform already renders the TOC graphic natively, but its link points at the signed CDN image (and clicking pops an image zoom modal). The script keeps the already-loaded image, drops the zoom-modal handler, and repoints the link at the article — clicking the graphic opens the paper with zero extra network requests.
 
 ### Collapsible Right Sidebar
 * **🗂️ Off-Canvas Sidebar:** The right `#Sidebar` (ads, "New & popular" articles, journal socials) is collapsed by default, giving the article list the full viewport width.
@@ -58,7 +59,7 @@ The script automatically activates when browsing any ACS or RSC journal domain o
 * **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/jacsat/latest-articles), Issue pages, and [Search results](https://pubs.acs.org/jacsat/search-results) (*JACS*, *Org. Lett.*, *J. Org. Chem.*, etc.)
 * **RSC Publishing:** [RSC Advance Articles](https://pubs.rsc.org/sc/latest-articles), Issue pages, and [Search results](https://pubs.rsc.org/search-results) (*Chem. Sci.*, *Org. Chem. Front.*, *Chem. Commun.*, etc.)
 
-**TOC behavior:** On ACS Issue pages the platform already renders the TOC natively; the script only realigns it into the 2-column layout. On ASAP, RSC Issue, and Search pages the graphic is folded inside the "Abstract" button — the script fetches it via Silverchair's AJAX abstract endpoint and re-attaches it.
+**TOC behavior:** On ACS Issue pages the platform already renders the TOC natively; the script realigns it into the 2-column layout and repoints its graphic at the article (the site links it to the signed CDN image and pops a zoom modal). On ASAP, RSC Issue, and Search pages the graphic is folded inside the "Abstract" button — the script fetches it via Silverchair's AJAX abstract endpoint and re-attaches it.
 
 **Sidebar behavior:** The right sidebar is collapsed on pages that have one (ACS ASAP plus all RSC list pages). ACS Issue/Search pages have no sidebar and are left untouched.
 
