@@ -1,6 +1,6 @@
 # ACS & RSC TOC Restorer
 
-> A lightweight browser userscript for ACS & RSC journals on the Silverchair platform. It restores the missing TOC / Visual Abstract graphics on article-list pages (ASAP, Issue, Search) into a clean 2-column layout, and reclaims screen space by collapsing the right sidebar into a slide-out panel.
+> A lightweight browser userscript for ACS & RSC journals on the Silverchair platform. It restores the missing TOC / Visual Abstract graphics on article-list pages (ASAP, Issue, Search) into a clean 2-column layout, reclaims screen space by collapsing the right sidebar into a slide-out panel, and upgrades the left navigation into a sticky, scroll-spy section outline.
 
 ---
 
@@ -19,6 +19,12 @@
 * **📌 Slide-Out Panel:** A **Related** tab on the right edge (upper area) slides the sidebar back in on demand; click the backdrop or press `Esc` to close.
 * **🛡️ Ad-Friendly:** Ads load normally inside the panel and remain blockable by your ad blocker — the script never hides or interferes with ad content.
 * **🤫 Silent When Empty:** On pages with an empty sidebar (e.g. ACS ASAP), the whitespace is reclaimed with no stray toggle button.
+
+### Enhanced Left Navigation (InfoColumn)
+* **📌 Sticky Section Outline:** The left `#InfoColumn` nav pins near the top of the viewport while you scroll the article list, so the jump links stay one click away — the sticky behavior the platform only grants to some pages (Search, ACS Issue).
+* **📐 Consistent 220px Column:** The nav is locked to the platform's native 220px width on every list page. On RSC ASAP the site's own grid wrongly strands `#InfoColumn` at the page footer, and without this fix the RSC search filters would balloon to ~790px wide.
+* **🏷️ ASAP Heading:** The ASAP nav ships with no title; a **Contents** heading is injected so it matches the titled navs on Issue/Search pages.
+* **🔦 Scroll-Spy:** As you scroll, the nav link of the section currently in view is highlighted (bold + black), mirroring the Issue page. Active on ASAP only, since Issue already has its own native scroll-spy.
 
 ---
 
@@ -56,6 +62,8 @@ The script automatically activates when browsing any ACS or RSC journal domain o
 
 **Sidebar behavior:** The right sidebar is collapsed on pages that have one (ACS ASAP plus all RSC list pages). ACS Issue/Search pages have no sidebar and are left untouched.
 
+**Left-nav behavior:** `#InfoColumn` is promoted to a sticky 220px navigation column on ASAP and Issue (the site leaves it stranded at the page footer on RSC ASAP), with scroll-spy active-link highlighting on ASAP.
+
 ---
 
 ## 🔧 Technical Architecture
@@ -78,6 +86,13 @@ The script automatically activates when browsing any ACS or RSC journal domain o
 [MutationObserver detects it] -> position:fixed off-canvas (CSS-only, no DOM moves)
         │
         └─► "Related" tab slides it out on demand (backdrop / Esc closes)
+
+[Left Nav]  #InfoColumn is stretched to full height (align-self: stretch) so the
+        │   platform's own .info-inner-wrap.can-stick sticky engages — flex-start
+        ▼   would collapse it and kill the sticky
+[Sticky 220px outline] -> on ASAP a "Contents" heading is injected
+        │
+        └─► Scroll-spy toggles .section-jump-link.active on the section in view
 ```
 
 ---
