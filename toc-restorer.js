@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.5
+// @version      4.5.2
 // @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
@@ -197,14 +197,15 @@
            width. A floating toggle slides it back in on demand. No DOM is
            moved, which keeps Silverchair's own ad/widget JS intact.
            ======================================================== */
+        body.toc-sidebar-active { --toc-sidebar-w: min(340px, 90vw); }
+
         body.toc-sidebar-active #Sidebar,
         body.toc-sidebar-active .issue-sidebar {
             position: fixed !important;
             top: 0 !important;
             right: 0 !important;
             height: 100vh !important;
-            width: 340px !important;
-            max-width: 90vw !important;
+            width: var(--toc-sidebar-w) !important;
             z-index: 100000 !important;
             overflow-y: auto !important;
             background: #fff !important;
@@ -281,7 +282,7 @@
             font-size: 16px !important;
             font-weight: 700 !important;
             box-shadow: -2px 0 6px rgba(0,0,0,0.15) !important;
-            transition: background 0.15s ease, opacity 0.2s ease !important;
+            transition: background 0.15s ease, opacity 0.2s ease, right 0.25s ease !important;
         }
         #toc-sidebar-toggle:hover { background: #004976 !important; }
         #toc-sidebar-toggle .toc-toggle-label {
@@ -290,11 +291,17 @@
             transform: rotate(180deg) !important; /* read bottom-to-top (CCW 90°) */
             line-height: 1.1 !important;
         }
-        #toc-sidebar-toggle .toc-toggle-arrow { flex: 0 0 auto !important; }
-        body.toc-sidebar-open #toc-sidebar-toggle {
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
+        #toc-sidebar-toggle .toc-toggle-arrow { flex: 0 0 auto !important; transition: transform 0.25s ease !important; }
+
+        /* When open, the toggle persists as a close handle: label swaps
+           "More" → "Hide", the chevron flips outward (‹ → ›), and it slides to
+           the panel seam (the sidebar's left edge) so it sits between the
+           content and the panel instead of floating over panel content. */
+        #toc-sidebar-toggle .toc-toggle-label--hide { display: none !important; }
+        body.toc-sidebar-open #toc-sidebar-toggle .toc-toggle-label--more { display: none !important; }
+        body.toc-sidebar-open #toc-sidebar-toggle .toc-toggle-label--hide { display: inline-block !important; }
+        body.toc-sidebar-open .toc-toggle-arrow { transform: scaleX(-1) !important; }
+        body.toc-sidebar-open #toc-sidebar-toggle { right: var(--toc-sidebar-w) !important; }
 
         /* Backdrop dims the page while the sidebar is slid out */
         #toc-sidebar-backdrop {
@@ -309,14 +316,6 @@
         body.toc-sidebar-open #toc-sidebar-backdrop {
             opacity: 1 !important;
             pointer-events: auto !important;
-        }
-
-        @media (max-width: 768px) {
-            body.toc-sidebar-active #Sidebar,
-            body.toc-sidebar-active .issue-sidebar {
-                width: 100vw !important;
-                max-width: 100vw !important;
-            }
         }
     `;
     document.head.appendChild(style);
@@ -616,7 +615,8 @@
             btn.id = 'toc-sidebar-toggle';
             btn.type = 'button';
             btn.title = 'Show sidebar';
-            btn.innerHTML = `<span class="toc-toggle-label">More</span>
+            btn.innerHTML = `<span class="toc-toggle-label toc-toggle-label--more">More</span>
+                <span class="toc-toggle-label toc-toggle-label--hide">Hide</span>
                 <svg class="toc-toggle-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>`;
             btn.addEventListener('click', () => {
                 document.body.classList.toggle('toc-sidebar-open');
