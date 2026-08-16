@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.5.2
+// @version      4.6.0
 // @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
@@ -653,7 +653,13 @@
         clearTimeout(scanTimer);
         scanTimer = setTimeout(scanAndObserve, 150);
     });
-    const targetNode = document.querySelector('.widget-ArticleListGroups, .article-list-resources, #ContentColumn, #searchContent') || document.body;
-    pageObserver.observe(targetNode, { childList: true, subtree: true });
+    // Watch the whole document, not a container inside the results area:
+    // Silverchair refreshes whole widgets — on the search page, facet filters
+    // and pagination replace the ENTIRE .widget-SolrSearch subtree, destroying
+    // #ContentColumn/#searchContent and orphaning any observer attached to
+    // them, so the freshly swapped-in cards were never rescanned. document.body
+    // always survives the swap. The 150ms debounce above and the scan's
+    // idempotency flags (tocProcessed etc.) keep the wider watch cheap.
+    pageObserver.observe(document.body, { childList: true, subtree: true });
 
 })();
