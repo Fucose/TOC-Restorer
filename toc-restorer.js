@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.6.0
+// @version      4.6.1
 // @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
@@ -44,7 +44,7 @@
             width: 40% !important;
             margin-left: auto !important;
             position: relative !important;
-            min-height: 180px !important;
+            min-height: 200px !important;
             box-sizing: border-box !important;
             background-color: transparent !important;
             border: 1px solid #e2e8f0 !important;
@@ -188,6 +188,10 @@
                 min-height: 180px !important;
                 margin-top: 10px !important;
                 margin-left: 0 !important;
+            }
+            /* .custom-toc-right keeps its taller 200px floor on narrow screens too */
+            .custom-toc-right {
+                min-height: 200px !important;
             }
         }
 
