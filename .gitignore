@@ -1,2 +1,6 @@
 # Downloaded page snapshots used for local DOM/CSS analysis — not part of the userscript
 view-source_*.html
+
+# Raw page snapshots saved for v5 rework (view-source dumps, see .scratch/decode.py)
+*___pubs.acs.org*.html
+.scratch/

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ACS & RSC TOC Restorer
 // @namespace    https://github.com/Fucose/TOC-Restorer
-// @version      4.6.1
-// @description  Restores TOC / Visual Abstract graphics on ACS & RSC article lists (ASAP, Issue, Search) into a 2-column layout, and collapses the right sidebar into a slide-out panel.
+// @version      5.0.0
+// @description  Renders TOC / Visual Abstract graphics on ACS & RSC article lists in a 2-column layout (ASAP reuses the site's own images) and collapses the right sidebar into a slide-out panel.
 // @author       Yingjie Wang @ SIOC
 // @homepageURL  https://github.com/Fucose/TOC-Restorer
 // @supportURL   https://github.com/Fucose/TOC-Restorer/issues
@@ -18,11 +18,18 @@
 (function() {
     'use strict';
 
-    // 1. Inject CSS styles supporting both Native TOC (ACS Issues) and Fetched TOC (ASAP/RSC Issues)
+    // ACS search results now ship graphical abstracts natively
+    // (.item-media--graphical-abstract per result), so the script has nothing
+    // left to do there — bail out before injecting any CSS or behaviour.
+    // Gated to pubs.acs.org: RSC search pages still use the fetched-TOC path.
+    if (/(^|\.)pubs\.acs\.org$/.test(location.hostname) &&
+        document.body.classList.contains('pg_searchresults')) return;
+
+    // 1. Inject CSS styles supporting both Native TOC (ACS ASAP) and Fetched TOC (RSC Issues)
     const style = document.createElement('style');
     style.textContent = `
         /* ========================================================
-           MODE A: Fetched TOC Layout (ASAP, RSC Issue & Search Pages)
+           MODE A: Fetched TOC Layout (RSC Issue/Search, ACS fallback)
            ======================================================== */
         .has-custom-toc {
             display: flex !important;
@@ -85,9 +92,15 @@
         }
 
         /* ========================================================
-           MODE B: Native TOC Restructuring (ACS Issue Pages)
+           MODE B: ASAP native TOC styling (ACS ASAP Pages)
+           The site now ships a featured image (.featured-img-wrapper)
+           beside each card's text column (.al-article-items) inside
+           .al-article-box. We reuse it — no fetch, no duplicate — and
+           dress it in the same framed right-column card the fetched
+           TOC uses (Mode A). ACS Issue keeps its untouched native
+           layout; there we only repoint the graphic's link.
            ======================================================== */
-        .al-article-item-wrap.has-native-toc {
+        .al-article-box.has-native-toc {
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
@@ -97,19 +110,22 @@
             box-sizing: border-box !important;
         }
 
-        .al-article-item-wrap.has-native-toc .al-article-items {
+        .al-article-box.has-native-toc .al-article-items {
             flex: 1 1 56% !important;
             min-width: 0 !important;
             width: auto !important;
+            float: none !important;
         }
 
-        .al-article-item-wrap.has-native-toc .issue-graphical-abstract {
+        .al-article-box.has-native-toc .featured-img-wrapper {
             flex: 0 0 40% !important;
             width: 40% !important;
+            height: auto !important;
+            min-width: 0 !important;
             margin-left: auto !important;
             order: 2 !important;
             position: relative !important;
-            min-height: 180px !important;
+            min-height: 200px !important;
             box-sizing: border-box !important;
             background-color: transparent !important;
             border: 1px solid #e2e8f0 !important;
@@ -121,7 +137,7 @@
             padding: 6px !important;
         }
 
-        .al-article-item-wrap.has-native-toc .issue-graphical-abstract a {
+        .al-article-box.has-native-toc .featured-img-wrapper a {
             position: absolute !important;
             top: 6px !important;
             bottom: 6px !important;
@@ -135,7 +151,7 @@
             text-decoration: none !important;
         }
 
-        .al-article-item-wrap.has-native-toc .issue-graphical-abstract img {
+        .al-article-box.has-native-toc .featured-img-wrapper img {
             width: 100% !important;
             height: 100% !important;
             object-fit: contain !important;
@@ -145,7 +161,7 @@
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
         }
 
-        .al-article-item-wrap.has-native-toc .issue-graphical-abstract a:hover img {
+        .al-article-box.has-native-toc .featured-img-wrapper a:hover img {
             transform: scale(1.02) !important;
             box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
         }
@@ -178,11 +194,11 @@
         /* Mobile Viewport Responsiveness */
         @media (max-width: 768px) {
             .has-custom-toc,
-            .al-article-item-wrap.has-native-toc {
+            .al-article-box.has-native-toc {
                 flex-direction: column !important;
             }
             .custom-toc-right,
-            .al-article-item-wrap.has-native-toc .issue-graphical-abstract {
+            .al-article-box.has-native-toc .featured-img-wrapper {
                 width: 100% !important;
                 flex: 1 1 100% !important;
                 min-height: 180px !important;
@@ -337,49 +353,66 @@
         });
     }, { rootMargin: '300px' });
 
+    // Repoint a native TOC graphic's anchor at the article. On ACS Issue the
+    // platform's anchor points at the signed CDN image (…?Expires=…&Signature=…)
+    // and its click is hijacked by Silverchair's modal handler (preventDefault →
+    // #revealModal zoom). The image is already loaded, so keep it — just drop the
+    // modal handler and set the href to the article, making the whole graphic
+    // click through to the paper. Idempotent; a no-op where the link is already
+    // correct (ACS ASAP's .featured-img-wrapper links to the article natively).
+    function repointToArticle(nativeToc, card) {
+        const nativeLink = nativeToc.querySelector('a[href]');
+        const titleLink = card.querySelector('.al-title a, .item-title a, h3.customLink a, .article-title a, h5 a, h3 a');
+        if (!nativeLink || !titleLink || nativeLink.dataset.tocRepointed) return;
+        nativeLink.dataset.tocRepointed = 'true';
+        const jq = window.jQuery || window.$;
+        // Unbind the modal handler only when one is actually present,
+        // so a future site fix (link repaired / modal removed) is a no-op.
+        if (jq && jq._data && jq._data(nativeLink, 'events') && jq._data(nativeLink, 'events').click) {
+            jq(nativeLink).off('click');
+        }
+        if (nativeLink.href !== titleLink.href) {
+            nativeLink.href = titleLink.href;
+            if (titleLink.target) nativeLink.target = titleLink.target;
+            else nativeLink.removeAttribute('target'); // drop stale _blank from setAllLinksTarget
+        }
+    }
+
     // 3. Scan and observe article cards
     function scanAndObserve() {
-        // Step A: Handle ACS Issue pages with pre-existing .issue-graphical-abstract
+        // Step A: ACS Issue pages — the site lays its native .issue-graphical-abstract
+        // out on its own; since v5 we no longer restyle or reposition it. Just skip
+        // the fetch path for these cards and fix the graphic's link (repointToArticle).
         const nativeWraps = document.querySelectorAll('.al-article-item-wrap');
         nativeWraps.forEach(wrap => {
             const nativeToc = wrap.querySelector('.issue-graphical-abstract');
             const card = wrap.querySelector('.al-article-items');
             if (nativeToc && card) {
-                if (!wrap.classList.contains('has-native-toc')) {
-                    wrap.classList.add('has-native-toc');
-                    // Move native TOC element to the end so it renders on the right side
-                    if (wrap.firstElementChild === nativeToc) {
-                        wrap.appendChild(nativeToc);
-                    }
-                }
                 card.dataset.tocProcessed = 'true'; // Skip API fetching for native TOC items
-
-                // Step A2: The platform's native TOC anchor points at the signed
-                // CDN image (…?Expires=…&Signature=…) and its click is hijacked by
-                // Silverchair's modal handler (preventDefault → #revealModal zoom).
-                // The image is already loaded, so keep it — just drop the modal
-                // handler and repoint the link at the article, making the whole
-                // graphic click through to the paper. Idempotent.
-                const nativeLink = nativeToc.querySelector('a[href]');
-                const titleLink = card.querySelector('.al-title a, .item-title a, h3.customLink a, .article-title a, h5 a, h3 a');
-                if (nativeLink && titleLink && !nativeLink.dataset.tocRepointed) {
-                    nativeLink.dataset.tocRepointed = 'true';
-                    const jq = window.jQuery || window.$;
-                    // Unbind the modal handler only when one is actually present,
-                    // so a future site fix (link repaired / modal removed) is a no-op.
-                    if (jq && jq._data && jq._data(nativeLink, 'events') && jq._data(nativeLink, 'events').click) {
-                        jq(nativeLink).off('click');
-                    }
-                    if (nativeLink.href !== titleLink.href) {
-                        nativeLink.href = titleLink.href;
-                        if (titleLink.target) nativeLink.target = titleLink.target;
-                        else nativeLink.removeAttribute('target'); // drop stale _blank from setAllLinksTarget
-                    }
-                }
+                repointToArticle(nativeToc, card);
             }
         });
 
-        // Step B: Handle cards requiring fetched TOC (ASAP, RSC Issue, and Search pages)
+        // Step A2: ACS ASAP pages now ship a native featured image beside the text
+        // column (.featured-img-wrapper inside .al-article-box). Do NOT fetch a
+        // second TOC graphic — dress the site's own image in the script's framed
+        // right-column card style (Mode B CSS) and skip the fetch path.
+        const asapBoxes = document.querySelectorAll('.al-article-box');
+        asapBoxes.forEach(box => {
+            const nativeToc = box.querySelector(':scope > .featured-img-wrapper');
+            const card = box.querySelector(':scope > .al-article-items');
+            if (!nativeToc || !card) return;
+            const img = nativeToc.querySelector('img');
+            const src = img && (img.getAttribute('src') || img.getAttribute('data-src'));
+            // A card with no real image (yet) falls through to the fetched path below.
+            if (!src || src.includes('preloader.gif')) return;
+            box.classList.add('has-native-toc'); // idempotent
+            card.dataset.tocProcessed = 'true';
+            repointToArticle(nativeToc, card);
+        });
+
+        // Step B: Handle cards requiring fetched TOC (RSC Issue/Search and ACS
+        // cards without a native graphic).
         // Anchor on the Abstract button — the one stable element present on every
         // list page (ASAP / Issue / Search) — then locate its card container.
         const absBtns = document.querySelectorAll('.showAbstractLink[data-articleid], .js-show-abstract[data-articleid]');
@@ -387,10 +420,10 @@
             const card = btn.closest('.al-article-items, .item-info');
             if (!card || card.dataset.tocProcessed) return;
             card.dataset.tocProcessed = 'true';
-            // Skip cards that already show a TOC: native (ACS Issue) or already rendered
-            const wrap = card.closest('.al-article-item-wrap');
+            // Skip cards that already show a TOC: native (ACS Issue/ASAP) or already rendered
+            const wrap = card.closest('.al-article-item-wrap, .al-article-box');
             const hasNative = card.querySelector('.issue-graphical-abstract') ||
-                              (wrap && wrap.querySelector('.issue-graphical-abstract'));
+                              (wrap && wrap.querySelector('.issue-graphical-abstract, .featured-img-wrapper img[src]'));
             if (hasNative || card.querySelector('.custom-toc-right')) return;
             observer.observe(card);
         });

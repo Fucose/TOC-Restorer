@@ -1,19 +1,22 @@
 # ACS & RSC TOC Restorer
 
-> A lightweight browser userscript for ACS & RSC journals on the Silverchair platform. It restores the missing TOC / Visual Abstract graphics on article-list pages (ASAP, Issue, Search) into a clean 2-column layout, reclaims screen space by collapsing the right sidebar into a slide-out panel, and upgrades the left navigation into a sticky, scroll-spy section outline.
+> A lightweight browser userscript for ACS & RSC journals on the Silverchair platform. It presents TOC / Visual Abstract graphics on article-list pages in a clean 2-column layout — fetching what the site doesn't ship and restyling what it does — reclaims screen space by collapsing the right sidebar into a slide-out panel, and upgrades the left navigation into a sticky, scroll-spy section outline.
 
 ---
 
 ## 🌟 Features
 
-### TOC / Visual Abstract Restoration
-* **🚀 Ultra-Fast & Lightweight:** Leverages Silverchair's native AJAX abstract endpoint (~2 KB payload per article) for instant image retrieval without cluttering network traffic.
+### TOC / Visual Abstract Presentation
+
+* **🖼️ Native Image Reuse (ACS ASAP):** ACS now ships a featured TOC image on every ASAP card. The script no longer fetches a second one — it dresses the site's own image in its framed right-column card style (zero extra requests, no duplicate graphics), and only falls back to fetching for cards that lack a native image.
+* **🔗 Native Graphic Click-Through (ACS Issue):** On ACS Issue pages the platform renders (and now lays out) the TOC graphic itself; the script leaves the layout untouched and only fixes the link: its anchor points at the signed CDN image and its click is hijacked by the zoom modal, so the script drops the modal handler and repoints the anchor at the article — clicking the graphic opens the paper.
+* **🚫 ACS Search = out of scope:** ACS search results now show graphical abstracts natively, so the script fully bails out on those pages (no CSS, no sidebar collapse, no fetches).
+* **🚀 Ultra-Fast & Lightweight (RSC & fallback):** Leverages Silverchair's native AJAX abstract endpoint (~2 KB payload per article) for instant image retrieval without cluttering network traffic.
 * **⚡ Intelligent Lazy Loading:** Built with `IntersectionObserver` — images are fetched only when scrolled into view, preventing `429 Too Many Requests` rate limits.
-* **🔍 Universal Detection:** Cards are detected by anchoring on the Abstract button, so ASAP, Issue, *and* Search result pages are all covered — cross-journal search hits (e.g. an RSC global search returning a *Chem. Commun.* article) resolve the correct journal automatically.
-* **🖼️ Interactive & Clickable:** Restored TOC images mirror the article title's link and target, so clicking jumps straight to the full article.
+* **🔍 Universal Detection:** Cards are detected by anchoring on the Abstract button, so RSC ASAP / Issue / Search result pages are all covered — cross-journal search hits (e.g. an RSC global search returning a *Chem. Commun.* article) resolve the correct journal automatically.
+* **🖱️ Interactive & Clickable:** Restored TOC images mirror the article title's link and target, so clicking jumps straight to the full article.
 * **🎨 Modern Flat UI:** Restored cards blend into the journal interface with a flat CSS ring spinner and subtle hover effects.
 * **🔄 Built-in Fallback:** If an article lacks an AJAX endpoint (or it fails), the script falls back to parsing the full article page, ensuring reliable rendering.
-* **🔗 Native Graphic Click-Through (ACS Issue):** On ACS Issue pages the platform already renders the TOC graphic natively, but its link points at the signed CDN image (and clicking pops an image zoom modal). The script keeps the already-loaded image, drops the zoom-modal handler, and repoints the link at the article — clicking the graphic opens the paper with zero extra network requests.
 
 ### Collapsible Right Sidebar
 * **🗂️ Off-Canvas Sidebar:** The right `#Sidebar` (ads, "New & popular" articles, journal socials) is collapsed by default, giving the article list the full viewport width.
@@ -42,6 +45,10 @@ Supported Browsers & Extensions:
 
 ## 🚀 Installation
 
+**One-click (recommended):** with Tampermonkey installed, open the latest release's [`toc-restorer.user.js`](https://github.com/Fucose/TOC-Restorer/releases/latest) asset (or the raw file) and Tampermonkey will show the install prompt. The script declares `@updateURL` pointing at this repository, so existing installs auto-check for new versions.
+
+Manual:
+
 1. Install the **Tampermonkey** extension for your browser if you haven't already.
 2. Click the Tampermonkey icon in your browser toolbar and select **Create a new script...**.
 3. Clear any template code inside the editor.
@@ -56,10 +63,10 @@ Supported Browsers & Extensions:
 
 The script automatically activates when browsing any ACS or RSC journal domain on the Silverchair architecture, including but not limited to:
 
-* **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/jacsat/latest-articles), Issue pages, and [Search results](https://pubs.acs.org/jacsat/search-results) (*JACS*, *Org. Lett.*, *J. Org. Chem.*, etc.)
+* **ACS Publications:** [ACS ASAP Articles](https://pubs.acs.org/jacsat/latest-articles) and Issue pages (*JACS*, *Org. Lett.*, *J. Org. Chem.*, etc.). ACS [Search results](https://pubs.acs.org/jacsat/search-results) now show abstracts natively and are deliberately left alone.
 * **RSC Publishing:** [RSC Advance Articles](https://pubs.rsc.org/sc/latest-articles), Issue pages, and [Search results](https://pubs.rsc.org/search-results) (*Chem. Sci.*, *Org. Chem. Front.*, *Chem. Commun.*, etc.)
 
-**TOC behavior:** On ACS Issue pages the platform already renders the TOC natively; the script realigns it into the 2-column layout and repoints its graphic at the article (the site links it to the signed CDN image and pops a zoom modal). On ASAP, RSC Issue, and Search pages the graphic is folded inside the "Abstract" button — the script fetches it via Silverchair's AJAX abstract endpoint and re-attaches it.
+**TOC behavior:** On ACS Issue pages the platform renders and lays out the TOC natively; the script only repoints its graphic at the article (the site links it to the signed CDN image and pops a zoom modal). On ACS ASAP the site now ships a featured image per card — the script restyles it in its own 2-column card instead of fetching. On RSC Issue/Search pages (and ACS cards without a native image) the graphic is folded inside the "Abstract" button — the script fetches it via Silverchair's AJAX abstract endpoint and re-attaches it. On ACS Search results the script does nothing: those pages show graphical abstracts natively.
 
 **Sidebar behavior:** The right sidebar is collapsed on pages that have one (ACS ASAP plus all RSC list pages). ACS Issue/Search pages have no sidebar and are left untouched.
 
@@ -70,16 +77,22 @@ The script automatically activates when browsing any ACS or RSC journal domain o
 ## 🔧 Technical Architecture
 
 ```
-[User Scrolls Page]
+[Article Card]  native image present (ACS Issue / ASAP)?
         │
-        ▼
-[IntersectionObserver Triggers]
+        ├─ yes ─► Issue: leave the layout, repoint graphic link at the article
+        │         ASAP:  restyle the site's .featured-img-wrapper as the
+        │                framed right-column card — no fetch at all
         │
-        ├─► 1. Primary Strategy: Silverchair AJAX abstract API (~2 KB)
-        │       └─► Parse JSON -> Extract <img> -> Render TOC in 2-column card
-        │
-        └─► 2. Fallback Strategy (API fails / missing):
-                └─► Fetch Full Article Page -> Parse DOM -> Render TOC
+        └─ no ─► fetched-TOC path (RSC lists & ACS fallback)
+                │
+                ▼
+        [User Scrolls -> IntersectionObserver Triggers]
+                │
+                ├─► 1. Primary Strategy: Silverchair AJAX abstract API (~2 KB)
+                │       └─► Parse JSON -> Extract <img> -> Render TOC in 2-column card
+                │
+                └─► 2. Fallback Strategy (API fails / missing):
+                        └─► Fetch Full Article Page -> Parse DOM -> Render TOC
 
 [Sidebar]  #Sidebar is injected asynchronously by Silverchair JS
         │
